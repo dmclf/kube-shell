@@ -33,6 +33,11 @@ defaultcontext=$kubedefcontext
 fi
 }
 
+CRONJOBS ()
+{
+kubectl get cronjob -o wide
+echo
+}
 
 RESETPODS ()
 {
@@ -83,12 +88,11 @@ RESETPODS
 PODSSH ()
 {
 count=0
-if test $2 -gt 0 ;then clear;fi
 echo "available pods "
 #echo "add exist clause"
 if test -z "${NAMEARRAY[0]}"
 then
-for mess in $(kubectl -n $1 get pods | grep -v ^NAME | awk '{print $1":"$2":"$3":"$4":"$5}')
+for mess in $(kubectl -n $1 get pods -o wide | grep -v ^NAME | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 name=$(echo $mess | cut -f1 -d\:)
 echo "${ALPHABETARRAY[$count]} $(echo $mess | tr \:  \  )"
@@ -103,15 +107,23 @@ fi
 }
 
 
+bold=$(tput bold)
+normal=$(tput sgr0)
+cyan=$(tput setab 6)
+red=$(tput setab 1)
+green=$(tput setab 2)
+blackfg=$(tput setaf 0)
+redfg=$(tput setaf 1)
+bluefg=$(tput setaf 4)
+highlight="${green}${bluefg}"
 doclear=0
 while true
 do
-PODSSH $namespaceinuse $doclear
+if test $doclear -gt 0 ;then clear;fi
+echo "${bold}cluster context: ${highlight}$(kubectl config current-context)${normal} ${bold}namespace: ${highlight}$namespaceinuse${normal}"
+PODSSH $namespaceinuse
 echo "
-
-cluster context: $(kubectl config current-context) namespace: $namespaceinuse"
-echo ""
-echo "select a-z to bash to (or press Q to Quit, C for clustercontext-selection, N for namespace selection, S for saving current contexts)"
+${bold}select a-z to bash to (${bold}Q${normal}-> Quit ${bold}C${normal}-> clustercontext-selection ${bold}N${normal}-> namespace selection ${bold}S${normal}-> save current contexts ${bold}J${normal}-> cronJobs ${bold}I${normal}->cluster-Info)"
 read -s -r -n1 selected
 
 for ((i=0; i < ${#ALPHABETARRAY[@]}; ++i)); do
@@ -122,9 +134,16 @@ done
 
 if [ "${selected}" == "Q" ]
 then exit
+elif [ "${selected}" == "I" ]
+then
+kubectl cluster-info
+doclear=0
 elif [ "${selected}" == "C" ]
 then CLUSTERSET
 doclear=1
+elif [ "${selected}" == "J" ]
+then CRONJOBS
+doclear=0
 elif [ "${selected}" == "N" ]
 then NAMESPACESET
 doclear=1
@@ -141,6 +160,7 @@ echo "what do you want to do on ${NAMEARRAY[$selectednumber]} ?
 b: try exec /bin/bash
 p: return logs of previously terminated
 l: show logs
+tail: DIY: kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
 Q: quit
 any: go back"
 
@@ -154,9 +174,9 @@ echo "trying to bash into ${NAMEARRAY[$selectednumber]}"
 kubectl -n $namespaceinuse exec -ti ${NAMEARRAY[${selectednumber}]} /bin/bash
 doclear=0
 elif [ "${option}" == "l" ]
-then echo "trying to show logs for ${NAMEARRAY[$selectednumber]}"
+then echo "trying to show (last 40)  logs for ${NAMEARRAY[$selectednumber]}"
 doclear=0
-kubectl -n $namespaceinuse logs --tail=20 ${NAMEARRAY[$selectednumber]}
+kubectl -n $namespaceinuse logs --tail=40 ${NAMEARRAY[$selectednumber]}
 elif [ "${option}" == "p" ]
 then echo "trying to show previously terminated container logs for ${NAMEARRAY[$selectednumber]}"
 kubectl -n $namespaceinuse logs -p ${NAMEARRAY[$selectednumber]}
