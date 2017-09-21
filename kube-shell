@@ -7,6 +7,17 @@ declare -a NAMESPACEARRAY
 declare -a CLUSTERARRAY
 declare -a ALPHABETARRAY 
 
+bold=$(tput bold)
+normal=$(tput sgr0)
+cyan=$(tput setab 6)
+red=$(tput setab 1)
+green=$(tput setab 2)
+blackfg=$(tput setaf 0)
+redfg=$(tput setaf 1)
+bluefg=$(tput setaf 4)
+highlight="${green}${bluefg}"
+selectlight="${bold}${red}"
+
 count=0;for alphabet in {a..z};do ALPHABETARRAY[$count]=$alphabet ; count=$((count+1));done
 
 namespaceinuse=$(kubectl config view|grep namespace: | awk '{print $2}')
@@ -51,7 +62,7 @@ count=0
 echo "available clusters"
 for cluster in $(kubectl config get-clusters | grep -v ^NAME)
 do
-echo "${count} $cluster"
+echo "${selectlight}${count}${normal} $cluster"
 CLUSTERARRAY[$count]="$cluster"
 count=$((count+1))
 done
@@ -68,7 +79,7 @@ echo "available namespaces"
 for namespaces in $(kubectl get namespaces | grep -v ^NAME | awk '{print $1":"$2":"$3}')
 do
 namespace=$(echo $namespaces | cut -f1 -d\:)
-echo "${ALPHABETARRAY[$count]} $(echo $namespaces | tr \:  \  )"
+echo "${selectlight}${ALPHABETARRAY[$count]}${normal} $(echo $namespaces | tr \:  \  )"
 NAMESPACEARRAY[$count]="$namespace"
 count=$((count+1))
 done
@@ -95,27 +106,18 @@ then
 for mess in $(kubectl -n $1 get pods -o wide | grep -v ^NAME | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 name=$(echo $mess | cut -f1 -d\:)
-echo "${ALPHABETARRAY[$count]} $(echo $mess | tr \:  \  )"
+echo "${selectlight}${ALPHABETARRAY[$count]}${normal} $(echo $mess | tr \:  \  )"
 NAMEARRAY[$count]="$name"
 count=$((count+1))
 done
 else 
 for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
- echo "${ALPHABETARRAY[$i]} ${NAMEARRAY[$i]}"
+ echo "${selectlight}${ALPHABETARRAY[$i]}${normal} ${NAMEARRAY[$i]}"
 done
 fi
 }
 
 
-bold=$(tput bold)
-normal=$(tput sgr0)
-cyan=$(tput setab 6)
-red=$(tput setab 1)
-green=$(tput setab 2)
-blackfg=$(tput setaf 0)
-redfg=$(tput setaf 1)
-bluefg=$(tput setaf 4)
-highlight="${green}${bluefg}"
 doclear=0
 while true
 do
@@ -157,12 +159,12 @@ option="b"
 while [[ $option = [bpl] ]]
 do
 echo "what do you want to do on ${NAMEARRAY[$selectednumber]} ?
-b: try exec /bin/bash
-p: return logs of previously terminated
-l: show logs
-tail: DIY: kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
-Q: quit
-any: go back"
+${selectlight}b${normal} try exec /bin/bash
+${selectlight}p${normal} return logs of previously terminated
+${selectlight}l${normal} show logs
+${selectlight}Q${normal} quit
+${bold}tail .. DIY:${normal} kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
+${bold}any:${normal} go back"
 
 read -s -r -n1 option
 
