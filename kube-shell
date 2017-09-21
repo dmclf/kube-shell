@@ -14,6 +14,7 @@ trap exittrap INT TERM EXIT HUP EXIT
 exittrap ()
 {
 kubectl config use-context $defaultcontext
+stty sane
 exit 1
 }
 
