@@ -1,0 +1,170 @@
+#!/bin/sh
+declare -a NAMEARRAY
+declare -a NAMESPACEARRAY
+declare -a CLUSTERARRAY
+declare -a ALPHABETARRAY 
+
+count=0;for alphabet in {a..z};do ALPHABETARRAY[$count]=$alphabet ; count=$((count+1));done
+
+namespaceinuse=$(kubectl config view|grep namespace: | awk '{print $2}')
+if test -z "$namespaceinuse";then namespaceinuse='default';fi
+defaultcontext=$(kubectl config current-context)
+
+trap exittrap INT TERM EXIT HUP EXIT
+exittrap ()
+{
+kubectl config use-context $defaultcontext
+exit 1
+}
+
+SAVEDEFAULTS ()
+{
+kubedefcontext=$(kubectl config current-context)
+if test ! -z "$kubedefcontext"
+then
+echo "saving namespace $1 and context $kubedefcontext as default"
+kubectl config set-context $kubedefcontext --namespace $1
+kubectl config set-context $kubedefcontext
+defaultcontext=$kubedefcontext
+fi
+}
+
+
+RESETPODS ()
+{
+unset NAMEARRAY
+declare -a NAMEARRAY
+}
+
+CLUSTERSET ()
+{
+count=0
+echo "available clusters"
+for cluster in $(kubectl config get-clusters | grep -v ^NAME)
+do
+echo "${count} $cluster"
+CLUSTERARRAY[$count]="$cluster"
+count=$((count+1))
+done
+echo "select cluster"
+read -s -r -n1 selected
+kubectl config use-context ${CLUSTERARRAY[$selected]}
+RESETPODS
+}
+
+NAMESPACESET ()
+{
+count=0
+echo "available namespaces"
+for namespaces in $(kubectl get namespaces | grep -v ^NAME | awk '{print $1":"$2":"$3}')
+do
+namespace=$(echo $namespaces | cut -f1 -d\:)
+echo "${ALPHABETARRAY[$count]} $(echo $namespaces | tr \:  \  )"
+NAMESPACEARRAY[$count]="$namespace"
+count=$((count+1))
+done
+echo "select namespace"
+read -s -r -n1 selected
+
+for ((i=0; i < ${#ALPHABETARRAY[@]}; ++i)); do
+    if [ "$selected" = "${ALPHABETARRAY[$i]}" ]; then
+	selectednumber=$i
+    fi
+done
+sleep 1
+namespaceinuse=${NAMESPACEARRAY[${selectednumber}]}
+RESETPODS
+}
+
+PODSSH ()
+{
+count=0
+if test $2 -gt 0 ;then clear;fi
+echo "available pods "
+#echo "add exist clause"
+if test -z "${NAMEARRAY[0]}"
+then
+for mess in $(kubectl -n $1 get pods | grep -v ^NAME | awk '{print $1":"$2":"$3":"$4":"$5}')
+do
+name=$(echo $mess | cut -f1 -d\:)
+echo "${ALPHABETARRAY[$count]} $(echo $mess | tr \:  \  )"
+NAMEARRAY[$count]="$name"
+count=$((count+1))
+done
+else 
+for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
+ echo "${ALPHABETARRAY[$i]} ${NAMEARRAY[$i]}"
+done
+fi
+}
+
+
+doclear=0
+while true
+do
+PODSSH $namespaceinuse $doclear
+echo "
+
+cluster context: $(kubectl config current-context) namespace: $namespaceinuse"
+echo ""
+echo "select a-z to bash to (or press Q to Quit, C for clustercontext-selection, N for namespace selection, S for saving current contexts)"
+read -s -r -n1 selected
+
+for ((i=0; i < ${#ALPHABETARRAY[@]}; ++i)); do
+    if [ "$selected" = "${ALPHABETARRAY[$i]}" ]; then
+        selectednumber=$i
+    fi
+done
+
+if [ "${selected}" == "Q" ]
+then exit
+elif [ "${selected}" == "C" ]
+then CLUSTERSET
+doclear=1
+elif [ "${selected}" == "N" ]
+then NAMESPACESET
+doclear=1
+elif [ "${selected}" == "S" ]
+then SAVEDEFAULTS $namespaceinuse
+elif [[ "${selected}" = [a-z] ]]
+then 
+
+
+option="b"
+while [[ $option = [bpl] ]]
+do
+echo "what do you want to do on ${NAMEARRAY[$selectednumber]} ?
+b: try exec /bin/bash
+p: return logs of previously terminated
+l: show logs
+Q: quit
+any: go back"
+
+read -s -r -n1 option
+
+if [ "${option}" == "Q" ]
+then exit
+elif [ "${option}" == "b" ]
+then
+echo "trying to bash into ${NAMEARRAY[$selectednumber]}"
+kubectl -n $namespaceinuse exec -ti ${NAMEARRAY[${selectednumber}]} /bin/bash
+doclear=0
+elif [ "${option}" == "l" ]
+then echo "trying to show logs for ${NAMEARRAY[$selectednumber]}"
+doclear=0
+kubectl -n $namespaceinuse logs --tail=20 ${NAMEARRAY[$selectednumber]}
+elif [ "${option}" == "p" ]
+then echo "trying to show previously terminated container logs for ${NAMEARRAY[$selectednumber]}"
+kubectl -n $namespaceinuse logs -p ${NAMEARRAY[$selectednumber]}
+doclear=0
+#elif [ "${option}" == "L" ]
+#then echo "trying to tail logs for ${NAMEARRAY[$selectednumber]}"
+#kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
+#doclear=0
+fi
+done
+
+else
+echo 'invalid option.. retry'
+fi
+done
