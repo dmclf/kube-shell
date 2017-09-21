@@ -1,4 +1,7 @@
 #!/bin/sh
+
+if !(which -s kubectl);then echo 'please install kubectl';exit 1;fi
+
 declare -a NAMEARRAY
 declare -a NAMESPACEARRAY
 declare -a CLUSTERARRAY
