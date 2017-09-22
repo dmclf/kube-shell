@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if !(which kubectl 2>&1 >/dev/null);then echo 'please install kubectl';exit 1;fi
 
@@ -15,8 +15,9 @@ green=$(tput setab 2)
 blackfg=$(tput setaf 0)
 redfg=$(tput setaf 1)
 bluefg=$(tput setaf 4)
-highlight="${green}${bluefg}"
-selectlight="${bold}${red}"
+greenfg=$(tput setaf 2)
+highlight="${greenfg}"
+selectlight="${bold}${redfg}"
 
 count=0;for alphabet in {a..z};do ALPHABETARRAY[$count]=$alphabet ; count=$((count+1));done
 
@@ -213,7 +214,8 @@ elif [ "${selected}" == "S" ]
 then SAVEDEFAULTS $namespaceinuse
 elif [[ "${selected}" = [a-z] ]]
 then 
-
+if test ! -z "${NAMEARRAY[$selectednumber]}"
+then
 
 option="b"
 while [[ $option = [bpl] ]]
@@ -250,6 +252,7 @@ doclear=0
 fi
 done
 
+fi
 else
 echo 'invalid option.. retry'
 fi
