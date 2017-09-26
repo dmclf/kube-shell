@@ -224,7 +224,11 @@ echo "what do you want to do on ${NAMEARRAY[$selectednumber]} ?
 ${selectlight}b${normal} try exec /bin/bash
 ${selectlight}p${normal} return logs of previously terminated
 ${selectlight}l${normal} show logs
+${selectlight}d${normal} describe
+${selectlight}y${normal} dump pod as yaml
 ${selectlight}Q${normal} quit
+${bold}more logs.. DIY:${normal} kubectl -n $namespaceinuse logs --timestamps --since=1h ${NAMEARRAY[$selectednumber]}
+${bold}more logs.. DIY:${normal} kubectl -n $namespaceinuse logs --timestamps ${NAMEARRAY[$selectednumber]}
 ${bold}tail .. DIY:${normal} kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
 ${bold}any:${normal} go back"
 
@@ -235,20 +239,24 @@ then exit
 elif [ "${option}" == "b" ]
 then
 echo "trying to bash into ${NAMEARRAY[$selectednumber]}"
-kubectl -n $namespaceinuse exec -ti ${NAMEARRAY[${selectednumber}]} /bin/bash
+kubectl -n $namespaceinuse exec -ti ${NAMEARRAY[${selectednumber}]} -- env "TERM=${TERM:-xterm-256color}" /bin/bash
+doclear=0
+elif [ "${option}" == "d" ]
+then kubectl -n $namespaceinuse describe pods ${NAMEARRAY[$selectednumber]}
 doclear=0
 elif [ "${option}" == "l" ]
 then echo "trying to show (last 40)  logs for ${NAMEARRAY[$selectednumber]}"
 doclear=0
-kubectl -n $namespaceinuse logs --tail=40 ${NAMEARRAY[$selectednumber]}
+kubectl -n $namespaceinuse logs --timestamps --tail=40 ${NAMEARRAY[$selectednumber]}
+elif [ "${option}" == "y" ]
+then 
+echo "writing ${NAMEARRAY[$selectednumber]} yaml output to kube.${namespaceinuse}.${NAMEARRAY[$selectednumber]}.yaml"
+kubectl -n $namespaceinuse get pod ${NAMEARRAY[$selectednumber]} -o yaml > "kube.${namespaceinuse}.${NAMEARRAY[$selectednumber]}.yaml"
+doclear=0
 elif [ "${option}" == "p" ]
 then echo "trying to show previously terminated container logs for ${NAMEARRAY[$selectednumber]}"
-kubectl -n $namespaceinuse logs -p ${NAMEARRAY[$selectednumber]}
+kubectl -n $namespaceinuse logs --timestamps -p ${NAMEARRAY[$selectednumber]}
 doclear=0
-#elif [ "${option}" == "L" ]
-#then echo "trying to tail logs for ${NAMEARRAY[$selectednumber]}"
-#kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
-#doclear=0
 fi
 done
 
