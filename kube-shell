@@ -220,7 +220,7 @@ then
 option="b"
 while [[ $option = [bpl] ]]
 do
-echo "what do you want to do on ${NAMEARRAY[$selectednumber]} ?
+echo "what do you want to do on ${highlight}${NAMEARRAY[$selectednumber]} ${bold}?${normal}
 ${selectlight}b${normal} try exec /bin/bash
 ${selectlight}p${normal} return logs of previously terminated
 ${selectlight}l${normal} show logs
