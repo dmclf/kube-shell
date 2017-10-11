@@ -286,7 +286,7 @@ echo "${bold}to be executed: kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$
 echo "${bold}please confirm with: ${selectlight}Y${normal}"
 read -s -r -n1 confirm
 if [ "${confirm}" == "Y" ]
-then echo kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]}
+then kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]}
 echo delete executed
 sleep 2
 RESETPODS
@@ -303,7 +303,7 @@ echo "${bold}to be executed: kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$
 echo "${bold}please confirm with: ${selectlight}Y${normal}"
 read -s -r -n1 confirm
 if [ "${confirm}" == "Y" ]
-then echo kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]} --grace-period=0 --force
+then kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]} --grace-period=0 --force
 echo delete executed
 sleep 2
 RESETPODS
