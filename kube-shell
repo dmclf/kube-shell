@@ -146,7 +146,7 @@ for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
  if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='healthy';fi
  if test ${NAMERESTARTSARRAY[$i]} -gt 0 -a ${NAMERESTARTSARRAY[$i]} -le 5;then restartslight="${yellowfg}";notes="some restarts?";fi
  if test ${NAMERESTARTSARRAY[$i]} -gt 5; then restartslight="${redfg}";notes="high restarts?";fi
- echo "${selectlight}${ALPHABETARRAY[$i]}${restartslight} ${NAMEARRAY[$i]}${normal} ${NAMERESTINFOARRAY[$i]} ${restartslight}$notes"
+ echo "${selectlight}${ALPHABETARRAY[$i]}${restartslight} ${NAMEARRAY[$i]}${normal} ${NAMERESTINFOARRAY[$i]} ${restartslight}$notes${normal}"
 done
 }
 
