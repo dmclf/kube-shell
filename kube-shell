@@ -57,9 +57,10 @@ CRONJOBS ()
 # add: cronjob list/edit
 echo "Cronjob Submenu:"
 count=0
-for cronjob in $(kubectl -n $1 get cronjob -o wide | grep -v ^NAME | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
+for cronjob in $(kubectl -n $1 get cronjob -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 cronname=$(echo $cronjob | cut -f1 -d\:)
+if test "${cronname}" = "NAME" ; then echo $cronjob | tr \:  \   ;continue;fi
 echo "${selectlight}${ALPHABETARRAY[$count]}${normal} $(echo $cronjob | tr \:  \  ) "
 CRONJOBARRAY[$count]="$cronname"
 count=$((count+1))
@@ -132,18 +133,19 @@ echo "available pods "
 #echo "add exist clause"
 if test -z "${NAMEARRAY[0]}"
 then
-for mess in $(kubectl -n $1 get pods -o wide | grep -v ^NAME | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
+for mess in $(kubectl -n $1 get pods -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 name=$(echo $mess | cut -f1 -d\:)
+if test "${name}" = "NAME" ; then echo $mess | tr \:  '\011';continue;fi
 NAMEARRAY[$count]="$name"
 NAMERESTARTSARRAY[$count]="$(echo $mess | cut -f4 -d\:)"
-NAMERESTINFOARRAY[$count]="$(echo $mess | cut -f2- -d\:  | sed s/^/:/g | tr \:  '\011' | sed s/Running/${greenfg}Running${normal}/g |sed  s/Restarting/${redfg}Restarting${normal}/g)"
+NAMERESTINFOARRAY[$count]="$(echo $mess | cut -f2- -d\:  | sed s/^/:/g | tr \:  '\011' | sed s/Running/${greenfg}Running${normal}/g |sed  s/Restarting/${redfg}Restarting${normal}/g | sed s/Terminating/${redfg}Terminating${normal}/g | sed s/ContainerCreating/${yellowfg}ContainerCreating${normal}/g )"
 count=$((count+1))
 done
 fi
 restartslight="${normal}"
 for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
- if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='healthy';fi
+ if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='';fi
  if test ${NAMERESTARTSARRAY[$i]} -gt 0 -a ${NAMERESTARTSARRAY[$i]} -le 5;then restartslight="${yellowfg}";notes="some restarts?";fi
  if test ${NAMERESTARTSARRAY[$i]} -gt 5; then restartslight="${redfg}";notes="high restarts?";fi
  NAMERESTINFOARRAY[$i]="$(echo "${NAMERESTINFOARRAY[$i]}" | sed "s/	${NAMERESTARTSARRAY[$i]}	/	${restartslight}${NAMERESTARTSARRAY[$i]}${normal}	/g" )"
