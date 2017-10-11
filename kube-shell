@@ -28,7 +28,7 @@ selectlight="${bold}${redfg}"
 
 count=0;for alphabet in {a..z};do ALPHABETARRAY[$count]=$alphabet ; count=$((count+1));done
 
-namespaceinuse=$(kubectl config view|grep namespace: | awk '{print $2}')
+namespaceinuse=$(kubectl config view --minify=true|grep namespace: | awk '{print $2}')
 if test -z "$namespaceinuse";then namespaceinuse='default';fi
 defaultcontext=$(kubectl config current-context)
 
@@ -90,7 +90,7 @@ CLUSTERSET ()
 {
 count=0
 echo "available clusters"
-for cluster in $(kubectl config get-clusters | grep -v ^NAME)
+for cluster in $(kubectl config get-clusters | grep -v ^NAME|sort )
 do
 echo "${selectlight}${count}${normal} $cluster"
 CLUSTERARRAY[$count]="$cluster"
@@ -106,7 +106,7 @@ NAMESPACESET ()
 {
 count=0
 echo "available namespaces"
-for namespaces in $(kubectl get namespaces | grep -v ^NAME | awk '{print $1":"$2":"$3}')
+for namespaces in $(kubectl get namespaces | grep -v ^NAME | awk '{print $1":"$2":"$3}'|sort)
 do
 namespace=$(echo $namespaces | cut -f1 -d\:)
 echo "${selectlight}${ALPHABETARRAY[$count]}${normal} $(echo $namespaces | tr \:  '\011'  )"
@@ -130,7 +130,6 @@ PODSSH ()
 {
 count=0
 echo "available pods "
-#echo "add exist clause"
 if test -z "${NAMEARRAY[0]}"
 then
 for mess in $(kubectl -n $1 get pods -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
