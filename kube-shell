@@ -7,6 +7,7 @@ if !(which kubectl 2>&1 >/dev/null);then echo 'please install kubectl';exit 1;fi
 clustersconfigged=$(kubectl config get-clusters | grep -v NAME | wc -l)
 
 declare -a NAMEARRAY
+declare -a NAMEARRAYCOLOR
 declare -a NAMERESTINFOARRAY
 declare -a NAMERESTARTSARRAY
 declare -a NAMESPACEARRAY
@@ -87,9 +88,11 @@ kubectl -n "$1" edit cronjob ${CRONJOBARRAY[$selectednumber]}
 RESETPODS ()
 {
 unset NAMEARRAY
+unset NAMEARRAYCOLOR
 unset NAMERESTARTSARRAY
 unset NAMERESTINFOARRAY
 declare -a NAMEARRAY
+declare -a NAMEARRAYCOLOR
 declare -a NAMERESTARTSARRAY
 declare -a NAMERESTINFOARRAY
 }
@@ -182,7 +185,7 @@ readycheck2=$(echo $readycheck | cut -f2 -d\:)
 if [[ "$readycheck1" == "$readycheck2" ]];then readytxt="${greenfg}${readycheck}${normal}";else readytxt="${redfg}${readycheck}${normal}";fi
 
 NAMERESTINFOARRAY[$count]="$(echo "${NAMERESTINFOARRAY[$count]} ${restartslight}${notes}${normal}" | sed "s/	${NAMERESTARTSARRAY[$count]}	/	${restartslight}${NAMERESTARTSARRAY[$count]}${normal}	/g" | sed "s/	$readycheck1\/$readycheck2/	$readytxt	/g")"
-NAMEARRAY[$count]="$(echo "${restartslight}${NAMEARRAY[$count]}${normal}" )"
+NAMEARRAYCOLOR[$count]="$(echo "${restartslight}${NAMEARRAY[$count]}${normal}" )"
 
 for item in DeadlineExceeded Restarting Terminating CrashLoopBackOff
 do
@@ -201,12 +204,7 @@ done
 fi
 restartslight="${normal}"
 for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
- #if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='';fi
- #if test ${NAMERESTARTSARRAY[$i]} -gt 5 -a ${NAMERESTARTSARRAY[$i]} -le 10;then restartslight="${green}${blackfg}";notes="restarts";fi
- #if test ${NAMERESTARTSARRAY[$i]} -gt 10 -a ${NAMERESTARTSARRAY[$i]} -le 20;then restartslight="${yellowfg}";notes="restarts";fi
- #if test ${NAMERESTARTSARRAY[$i]} -gt 20; then restartslight="${redfg}";notes="high restarts";fi
- echo "${selectlight}${ALPHABETARRAY[$i]} ${NAMEARRAY[$i]} ${NAMERESTINFOARRAY[$i]} "
- #echo "${selectlight}${ALPHABETARRAY[$i]}${restartslight} ${NAMEARRAY[$i]}${normal} ${NAMERESTINFOARRAY[$i]} ${restartslight}$notes${normal}"
+ echo "${selectlight}${ALPHABETARRAY[$i]} ${NAMEARRAYCOLOR[$i]} ${NAMERESTINFOARRAY[$i]} "
 done
 }
 
