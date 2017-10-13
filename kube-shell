@@ -41,18 +41,18 @@ fi
 trap exittrap INT TERM EXIT HUP EXIT
 exittrap ()
 {
-kubectl config use-context $defaultcontext
-stty sane
+kubectl config use-context "$defaultcontext" 2>/dev/null
+stty sane 2>/dev/null
 exit 1
 }
 
 SAVEDEFAULTS ()
 {
-kubedefcontext=$(kubectl config current-context)
+kubedefcontext=$(kubectl config current-context 2>/dev/null)
 if test ! -z "$kubedefcontext"
 then
 echo "saving namespace $1 and context $kubedefcontext as default"
-kubectl config set-context $kubedefcontext --namespace $1
+kubectl config set-context $kubedefcontext --namespace "$1"
 kubectl config set-context $kubedefcontext
 defaultcontext=$kubedefcontext
 fi
@@ -161,6 +161,7 @@ count=0
 echo "available pods "
 if test -z "${NAMEARRAY[0]}"
 then
+echo "gathering pod info.. (sometimes can be slow)"
 for mess in $(kubectl -n "$1" get pods -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 name=$(echo $mess | cut -f1 -d\:)
@@ -200,7 +201,7 @@ doclear=0
 while true
 do
 if test $doclear -gt 0 ;then clear;fi
-echo "${bold}cluster context: ${highlight}$(kubectl config current-context)${normal} ${bold}namespace: ${highlight}$namespaceinuse${normal}"
+echo "${bold}cluster context: ${highlight}$(kubectl config current-context 2>/dev/null)${normal} ${bold}namespace: ${highlight}$namespaceinuse${normal}"
 PODSSH $namespaceinuse
 echo "
 ${bold}select a-z to bash to (${bold}Q${normal}-> Quit ${bold}C${normal}-> clustercontext-selection ${bold}N${normal}-> namespace selection ${bold}S${normal}-> save current contexts ${bold}J${normal}-> cronJobs ${bold}I${normal}->cluster-Info)"
