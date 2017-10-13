@@ -14,23 +14,29 @@ declare -a CRONJOBARRAY
 
 bold=$(tput bold)
 normal=$(tput sgr0)
-cyan=$(tput setab 6)
-red=$(tput setab 1)
-green=$(tput setab 2)
 black=$(tput setab 0)
 blackfg=$(tput setaf 0)
+red=$(tput setab 1)
 redfg=$(tput setaf 1)
-yellowfg=$(tput setaf 3)
-bluefg=$(tput setaf 4)
+green=$(tput setab 2)
 greenfg=$(tput setaf 2)
+yellow=$(tput setab 3)
+yellowfg=$(tput setaf 3)
+blue=$(tput setab 4)
+bluefg=$(tput setaf 4)
+cyan=$(tput setab 6)
+cyanfg=$(tput setaf 6)
 highlight="${greenfg}"
 selectlight="${bold}${redfg}"
 
 count=0;for alphabet in {a..z};do ALPHABETARRAY[$count]=$alphabet ; count=$((count+1));done
 
+if test -f ~/.kube/config
+then
 namespaceinuse=$(kubectl config view --minify=true|grep namespace: | awk '{print $2}')
 if test -z "$namespaceinuse";then namespaceinuse='default';fi
 defaultcontext=$(kubectl config current-context)
+fi
 
 trap exittrap INT TERM EXIT HUP EXIT
 exittrap ()
@@ -57,7 +63,7 @@ CRONJOBS ()
 # add: cronjob list/edit
 echo "Cronjob Submenu:"
 count=0
-for cronjob in $(kubectl -n $1 get cronjob -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
+for cronjob in $(kubectl -n "$1" get cronjob -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 cronname=$(echo $cronjob | cut -f1 -d\:)
 if test "${cronname}" = "NAME" ; then echo $cronjob | tr \:  \   ;continue;fi
@@ -73,7 +79,7 @@ for ((i=0; i < ${#ALPHABETARRAY[@]}; ++i)); do
     fi
 done
 echo "editing cronjob ${CRONJOBARRAY[$selectednumber]}"
-kubectl -n $1 edit cronjob ${CRONJOBARRAY[$selectednumber]}
+kubectl -n "$1" edit cronjob ${CRONJOBARRAY[$selectednumber]}
 }
 
 RESETPODS ()
@@ -88,7 +94,7 @@ declare -a NAMERESTINFOARRAY
 
 CLUSTERSET ()
 {
-count=0
+count=1
 echo "available clusters"
 for cluster in $(kubectl config get-clusters | grep -v ^NAME|sort )
 do
@@ -96,9 +102,20 @@ echo "${selectlight}${count}${normal} $cluster"
 CLUSTERARRAY[$count]="$cluster"
 count=$((count+1))
 done
-echo "select cluster"
+echo "select cluster" 
+while true
+do
 read -s -r -n1 selected
+if test "$selected" = "Q"
+then exit
+fi
+if test "$selected" -gt 0 -a "$selected" -le ${#CLUSTERARRAY[@]}  2>/dev/null
+then
 kubectl config use-context ${CLUSTERARRAY[$selected]}
+break
+fi
+echo "invalid choice $selected"
+done
 RESETPODS
 }
 
@@ -111,11 +128,18 @@ do
 namespace=$(echo $namespaces | cut -f1 -d\:)
 echo "${selectlight}${ALPHABETARRAY[$count]}${normal} $(echo $namespaces | tr \:  '\011'  )"
 NAMESPACEARRAY[$count]="$namespace"
+maxallowed=${ALPHABETARRAY[$count]}
 count=$((count+1))
 done
 echo "select namespace"
+while true
+do
 read -s -r -n1 selected
-
+if test "$selected" = "Q"
+then exit
+fi
+if [[ "$selected" == [a-$maxallowed] ]]
+then
 for ((i=0; i < ${#ALPHABETARRAY[@]}; ++i)); do
     if [ "$selected" = "${ALPHABETARRAY[$i]}" ]; then
 	selectednumber=$i
@@ -124,6 +148,11 @@ done
 sleep 1
 namespaceinuse=${NAMESPACEARRAY[${selectednumber}]}
 RESETPODS
+break
+fi
+
+echo "invalid choice $selected"
+done
 }
 
 PODSSH ()
@@ -132,21 +161,35 @@ count=0
 echo "available pods "
 if test -z "${NAMEARRAY[0]}"
 then
-for mess in $(kubectl -n $1 get pods -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
+for mess in $(kubectl -n "$1" get pods -o wide | awk '{print $1":"$2":"$3":"$4":"$5":"$6":"$7}')
 do
 name=$(echo $mess | cut -f1 -d\:)
 if test "${name}" = "NAME" ; then echo $mess | tr \:  '\011';continue;fi
 NAMEARRAY[$count]="$name"
 NAMERESTARTSARRAY[$count]="$(echo $mess | cut -f4 -d\:)"
-NAMERESTINFOARRAY[$count]="$(echo $mess | cut -f2- -d\:  | sed s/^/:/g | tr \:  '\011' | sed s/Running/${greenfg}Running${normal}/g |sed  s/Restarting/${redfg}Restarting${normal}/g | sed s/Terminating/${redfg}Terminating${normal}/g | sed s/ContainerCreating/${yellowfg}ContainerCreating${normal}/g )"
+NAMERESTINFOARRAY[$count]="$(echo $mess | cut -f2- -d\:  | sed s/^/:/g | tr \:  '\011')"
+for item in DeadlineExceeded Restarting Terminating CrashLoopBackOff
+do
+NAMERESTINFOARRAY[$count]="$(echo ${NAMERESTINFOARRAY[$count]} |sed  s/${item}/${redfg}${item}${normal}/g)"
+done
+for item in ContainerCreating
+do
+NAMERESTINFOARRAY[$count]="$(echo ${NAMERESTINFOARRAY[$count]} |sed  s/${item}/${yellowfg}${item}${normal}/g)"
+done
+for item in Running
+do
+NAMERESTINFOARRAY[$count]="$(echo ${NAMERESTINFOARRAY[$count]} |sed  s/${item}/${greenfg}${item}${normal}/g)"
+done
+#sed s/Running/${greenfg}Running${normal}/g |sed  s/Restarting/${redfg}Restarting${normal}/g | sed s/Terminating/${redfg}Terminating${normal}/g | sed s/ContainerCreating/${yellowfg}ContainerCreating${normal}/g | sed s/CrashLoopBackOff/${redfg}CrashLoopBackOff${normal}/g)"
 count=$((count+1))
 done
 fi
 restartslight="${normal}"
 for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
  if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='';fi
- if test ${NAMERESTARTSARRAY[$i]} -gt 0 -a ${NAMERESTARTSARRAY[$i]} -le 5;then restartslight="${yellowfg}";notes="some restarts?";fi
- if test ${NAMERESTARTSARRAY[$i]} -gt 5; then restartslight="${redfg}";notes="high restarts?";fi
+ if test ${NAMERESTARTSARRAY[$i]} -gt 5 -a ${NAMERESTARTSARRAY[$i]} -le 10;then restartslight="${green}${blackfg}";notes="restarts";fi
+ if test ${NAMERESTARTSARRAY[$i]} -gt 10 -a ${NAMERESTARTSARRAY[$i]} -le 20;then restartslight="${yellowfg}";notes="restarts";fi
+ if test ${NAMERESTARTSARRAY[$i]} -gt 20; then restartslight="${redfg}";notes="high restarts";fi
  NAMERESTINFOARRAY[$i]="$(echo "${NAMERESTINFOARRAY[$i]}" | sed "s/	${NAMERESTARTSARRAY[$i]}	/	${restartslight}${NAMERESTARTSARRAY[$i]}${normal}	/g" )"
  echo "${selectlight}${ALPHABETARRAY[$i]}${restartslight} ${NAMEARRAY[$i]}${normal} ${NAMERESTINFOARRAY[$i]} ${restartslight}$notes${normal}"
 done
@@ -263,9 +306,9 @@ ${selectlight}y${normal} dump pod as yaml
 ${selectlight}D${redfg} DELETE pod${normal}
 ${selectlight}F${redfg} FORCE DELETE pod${normal}
 ${selectlight}Q${normal} quit
-${bold}more logs.. DIY:${normal} kubectl -n $namespaceinuse logs --timestamps --since=1h ${NAMEARRAY[$selectednumber]}
-${bold}more logs.. DIY:${normal} kubectl -n $namespaceinuse logs --timestamps ${NAMEARRAY[$selectednumber]}
-${bold}tail .. DIY:${normal} kubectl -n $namespaceinuse logs -f ${NAMEARRAY[$selectednumber]}
+${bold}more logs.. DIY:${normal} kubectl -n "$namespaceinuse" logs --timestamps --since=1h ${NAMEARRAY[$selectednumber]}
+${bold}more logs.. DIY:${normal} kubectl -n "$namespaceinuse" logs --timestamps ${NAMEARRAY[$selectednumber]}
+${bold}tail .. DIY:${normal} kubectl -n "$namespaceinuse" logs -f ${NAMEARRAY[$selectednumber]}
 ${bold}any:${normal} go back"
 
 read -s -r -n1 option
@@ -278,17 +321,17 @@ echo "trying to bash into ${NAMEARRAY[$selectednumber]}"
 kubectl -n $namespaceinuse exec -ti ${NAMEARRAY[${selectednumber}]} -- env "TERM=${TERM:-xterm-256color}" /bin/bash
 doclear=0
 elif [ "${option}" == "d" ]
-then kubectl -n $namespaceinuse describe pods ${NAMEARRAY[$selectednumber]}
+then kubectl -n "$namespaceinuse" describe pods ${NAMEARRAY[$selectednumber]}
 doclear=0
 elif [ "${option}" == "D" ]
 then 
 echo "${bold}${black}${redfg}#${yellowfg}#${redfg}#${yellowfg}#${redfg}#${yellowfg}#${redfg}WARNING${yellowfg}WARNING${redfg}WARNING${yellowfg}WARNING${redfg}#${yellowfg}#${redfg}#${yellowfg}#${redfg}#${yellowfg}#${normal}"
 echo "${black}${redfg}this will ${bold}delete your pod${normal}"
-echo "${bold}to be executed: kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]}${normal}"
+echo "${bold}to be executed: kubectl -n \"$namespaceinuse\" delete pod ${NAMEARRAY[$selectednumber]}${normal}"
 echo "${bold}please confirm with: ${selectlight}Y${normal}"
 read -s -r -n1 confirm
 if [ "${confirm}" == "Y" ]
-then kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]}
+then kubectl -n "$namespaceinuse" delete pod ${NAMEARRAY[$selectednumber]}
 echo delete executed
 sleep 2
 RESETPODS
@@ -301,11 +344,11 @@ elif [ "${option}" == "F" ]
 then 
 echo "${bold}${black}${redfg}#${yellowfg}#${redfg}#${yellowfg}#${redfg}#${yellowfg}#${redfg}WARNING${yellowfg}WARNING${redfg}WARNING${yellowfg}WARNING${redfg}#${yellowfg}#${redfg}#${yellowfg}#${redfg}#${yellowfg}#${normal}"
 echo "${black}${redfg}this will ${bold}delete your pod${normal}"
-echo "${bold}to be executed: kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]} --grace-period=0 --force${normal}"
+echo "${bold}to be executed: kubectl -n \"$namespaceinuse\" delete pod ${NAMEARRAY[$selectednumber]} --grace-period=0 --force${normal}"
 echo "${bold}please confirm with: ${selectlight}Y${normal}"
 read -s -r -n1 confirm
 if [ "${confirm}" == "Y" ]
-then kubectl -n $namespaceinuse delete pod ${NAMEARRAY[$selectednumber]} --grace-period=0 --force
+then kubectl -n "$namespaceinuse" delete pod ${NAMEARRAY[$selectednumber]} --grace-period=0 --force
 echo delete executed
 sleep 2
 RESETPODS
@@ -317,15 +360,15 @@ doclear=0
 elif [ "${option}" == "l" ]
 then echo "trying to show (last 40)  logs for ${NAMEARRAY[$selectednumber]}"
 doclear=0
-kubectl -n $namespaceinuse logs --timestamps --tail=40 ${NAMEARRAY[$selectednumber]}
+kubectl -n "$namespaceinuse" logs --timestamps --tail=40 ${NAMEARRAY[$selectednumber]}
 elif [ "${option}" == "y" ]
 then 
 echo "writing ${NAMEARRAY[$selectednumber]} yaml output to kube.${namespaceinuse}.${NAMEARRAY[$selectednumber]}.yaml"
-kubectl -n $namespaceinuse get pod ${NAMEARRAY[$selectednumber]} -o yaml > "kube.${namespaceinuse}.${NAMEARRAY[$selectednumber]}.yaml"
+kubectl -n "$namespaceinuse" get pod ${NAMEARRAY[$selectednumber]} -o yaml > "kube.${namespaceinuse}.${NAMEARRAY[$selectednumber]}.yaml"
 doclear=0
 elif [ "${option}" == "p" ]
 then echo "trying to show previously terminated container logs for ${NAMEARRAY[$selectednumber]}"
-kubectl -n $namespaceinuse logs --timestamps -p ${NAMEARRAY[$selectednumber]}
+kubectl -n "$namespaceinuse" logs --timestamps -p ${NAMEARRAY[$selectednumber]}
 doclear=0
 fi
 done
