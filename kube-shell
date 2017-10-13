@@ -171,6 +171,19 @@ if test "${name}" = "NAME" ; then echo $mess | tr \:  '\011';continue;fi
 NAMEARRAY[$count]="$name"
 NAMERESTARTSARRAY[$count]="$(echo $mess | cut -f4 -d\:)"
 NAMERESTINFOARRAY[$count]="$(echo $mess | cut -f2- -d\:  | sed s/^/:/g | tr \:  '\011')"
+
+if test ${NAMERESTARTSARRAY[$count]} -eq 0; then restartslight="${greenfg}";notes='';fi
+if test ${NAMERESTARTSARRAY[$count]} -gt 5 -a ${NAMERESTARTSARRAY[$count]} -le 10;then restartslight="${green}${blackfg}";notes="some restarts";fi
+if test ${NAMERESTARTSARRAY[$count]} -gt 10 -a ${NAMERESTARTSARRAY[$count]} -le 20;then restartslight="${yellowfg}";notes="medium restarts";fi
+if test ${NAMERESTARTSARRAY[$count]} -gt 20; then restartslight="${redfg}";notes="high restarts";fi
+readycheck=$(echo $mess | cut -f2 -d\: | tr \/ \:)
+readycheck1=$(echo $readycheck | cut -f1 -d\:)
+readycheck2=$(echo $readycheck | cut -f2 -d\:)
+if [[ "$readycheck1" == "$readycheck2" ]];then readytxt="${greenfg}${readycheck}${normal}";else readytxt="${redfg}${readycheck}${normal}";fi
+
+NAMERESTINFOARRAY[$count]="$(echo "${NAMERESTINFOARRAY[$count]} ${restartslight}${notes}${normal}" | sed "s/	${NAMERESTARTSARRAY[$count]}	/	${restartslight}${NAMERESTARTSARRAY[$count]}${normal}	/g" | sed "s/	$readycheck1\/$readycheck2/	$readytxt	/g")"
+NAMEARRAY[$count]="$(echo "${restartslight}${NAMEARRAY[$count]}${normal}" )"
+
 for item in DeadlineExceeded Restarting Terminating CrashLoopBackOff
 do
 NAMERESTINFOARRAY[$count]="$(echo ${NAMERESTINFOARRAY[$count]} |sed  s/${item}/${redfg}${item}${normal}/g)"
@@ -183,18 +196,17 @@ for item in Running
 do
 NAMERESTINFOARRAY[$count]="$(echo ${NAMERESTINFOARRAY[$count]} |sed  s/${item}/${greenfg}${item}${normal}/g)"
 done
-#sed s/Running/${greenfg}Running${normal}/g |sed  s/Restarting/${redfg}Restarting${normal}/g | sed s/Terminating/${redfg}Terminating${normal}/g | sed s/ContainerCreating/${yellowfg}ContainerCreating${normal}/g | sed s/CrashLoopBackOff/${redfg}CrashLoopBackOff${normal}/g)"
 count=$((count+1))
 done
 fi
 restartslight="${normal}"
 for ((i=0; i < ${#NAMEARRAY[@]}; ++i)); do
- if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='';fi
- if test ${NAMERESTARTSARRAY[$i]} -gt 5 -a ${NAMERESTARTSARRAY[$i]} -le 10;then restartslight="${green}${blackfg}";notes="restarts";fi
- if test ${NAMERESTARTSARRAY[$i]} -gt 10 -a ${NAMERESTARTSARRAY[$i]} -le 20;then restartslight="${yellowfg}";notes="restarts";fi
- if test ${NAMERESTARTSARRAY[$i]} -gt 20; then restartslight="${redfg}";notes="high restarts";fi
- NAMERESTINFOARRAY[$i]="$(echo "${NAMERESTINFOARRAY[$i]}" | sed "s/	${NAMERESTARTSARRAY[$i]}	/	${restartslight}${NAMERESTARTSARRAY[$i]}${normal}	/g" )"
- echo "${selectlight}${ALPHABETARRAY[$i]}${restartslight} ${NAMEARRAY[$i]}${normal} ${NAMERESTINFOARRAY[$i]} ${restartslight}$notes${normal}"
+ #if test ${NAMERESTARTSARRAY[$i]} -eq 0; then restartslight="${greenfg}";notes='';fi
+ #if test ${NAMERESTARTSARRAY[$i]} -gt 5 -a ${NAMERESTARTSARRAY[$i]} -le 10;then restartslight="${green}${blackfg}";notes="restarts";fi
+ #if test ${NAMERESTARTSARRAY[$i]} -gt 10 -a ${NAMERESTARTSARRAY[$i]} -le 20;then restartslight="${yellowfg}";notes="restarts";fi
+ #if test ${NAMERESTARTSARRAY[$i]} -gt 20; then restartslight="${redfg}";notes="high restarts";fi
+ echo "${selectlight}${ALPHABETARRAY[$i]} ${NAMEARRAY[$i]} ${NAMERESTINFOARRAY[$i]} "
+ #echo "${selectlight}${ALPHABETARRAY[$i]}${restartslight} ${NAMEARRAY[$i]}${normal} ${NAMERESTINFOARRAY[$i]} ${restartslight}$notes${normal}"
 done
 }
 
