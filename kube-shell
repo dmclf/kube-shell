@@ -4,6 +4,8 @@ if test -z "$EDITOR";then export EDITOR=vi;export VISUAL=vi;fi
 
 if !(which kubectl 2>&1 >/dev/null);then echo 'please install kubectl';exit 1;fi
 
+clustersconfigged=$(kubectl config get-clusters | grep -v NAME | wc -l)
+
 declare -a NAMEARRAY
 declare -a NAMERESTINFOARRAY
 declare -a NAMERESTARTSARRAY
@@ -203,8 +205,14 @@ do
 if test $doclear -gt 0 ;then clear;fi
 echo "${bold}cluster context: ${highlight}$(kubectl config current-context 2>/dev/null)${normal} ${bold}namespace: ${highlight}$namespaceinuse${normal}"
 PODSSH $namespaceinuse
+
+if test $clustersconfigged -gt 1
+then clustersconfigoption="${bold}C${normal}-> clustercontext-selection "
+else clustersconfigoption=""
+fi
+
 echo "
-${bold}select a-z to bash to (${bold}Q${normal}-> Quit ${bold}C${normal}-> clustercontext-selection ${bold}N${normal}-> namespace selection ${bold}S${normal}-> save current contexts ${bold}J${normal}-> cronJobs ${bold}I${normal}->cluster-Info)"
+${bold}select a-z to bash to (${bold}Q${normal}-> Quit ${clustersconfigoption}${bold}N${normal}-> namespace selection ${bold}S${normal}-> save current contexts ${bold}J${normal}-> cronJobs ${bold}I${normal}->cluster-Info)"
 read -s -r -n1 selected
 
 for ((i=0; i < ${#ALPHABETARRAY[@]}; ++i)); do
@@ -280,8 +288,14 @@ $ kubectl taint nodes foo dedicated=special-user:NoSchedule
 '
 doclear=0
 elif [ "${selected}" == "C" ]
-then CLUSTERSET
+then 
+if test $clustersconfigged -gt 1
+then
+CLUSTERSET
 doclear=1
+else
+echo "not enough clusters detected.. skipping"
+fi
 elif [ "${selected}" == "J" ]
 then CRONJOBS $namespaceinuse
 doclear=0
