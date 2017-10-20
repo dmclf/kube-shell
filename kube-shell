@@ -4,7 +4,7 @@ if test -z "$EDITOR";then export EDITOR=vi;export VISUAL=vi;fi
 
 if !(which kubectl 2>&1 >/dev/null);then echo 'please install kubectl';exit 1;fi
 
-clustersconfigged=$(kubectl config get-clusters | grep -v NAME | wc -l)
+clustersconfigged=$(kubectl config get-contexts |awk '{print $2}'| grep -v NAME | wc -l)
 
 declare -a NAMEARRAY
 declare -a NAMEARRAYCOLOR
@@ -101,7 +101,7 @@ CLUSTERSET ()
 {
 count=1
 echo "available clusters"
-for cluster in $(kubectl config get-clusters | grep -v ^NAME|sort )
+for cluster in $(kubectl config get-contexts |awk '{print $2}'| grep -v ^NAME|sort )
 do
 echo "${selectlight}${count}${normal} $cluster"
 CLUSTERARRAY[$count]="$cluster"
@@ -175,10 +175,13 @@ NAMEARRAY[$count]="$name"
 NAMERESTARTSARRAY[$count]="$(echo $mess | cut -f4 -d\:)"
 NAMERESTINFOARRAY[$count]="$(echo $mess | cut -f2- -d\:  | sed s/^/:/g | tr \:  '\011')"
 
-if test ${NAMERESTARTSARRAY[$count]} -eq 0; then restartslight="${greenfg}";notes='';fi
-if test ${NAMERESTARTSARRAY[$count]} -gt 5 -a ${NAMERESTARTSARRAY[$count]} -le 10;then restartslight="${green}${blackfg}";notes="some restarts";fi
-if test ${NAMERESTARTSARRAY[$count]} -gt 10 -a ${NAMERESTARTSARRAY[$count]} -le 20;then restartslight="${yellowfg}";notes="medium restarts";fi
-if test ${NAMERESTARTSARRAY[$count]} -gt 20; then restartslight="${redfg}";notes="high restarts";fi
+notes=''
+if [ "${NAMERESTARTSARRAY[$count]}" = "error" ] 2>/dev/null;then NAMERESTARTSARRAY[$count]=100;fi
+if test ${NAMERESTARTSARRAY[$count]} -eq 0 2>/dev/null; then restartslight="${greenfg}";notes='';fi
+if test ${NAMERESTARTSARRAY[$count]} -gt 5 -a ${NAMERESTARTSARRAY[$count]} -le 10 2>/dev/null;then restartslight="${green}${blackfg}";notes="some restarts";fi
+if test ${NAMERESTARTSARRAY[$count]} -gt 10 -a ${NAMERESTARTSARRAY[$count]} -le 20 2>/dev/null;then restartslight="${yellowfg}";notes="medium restarts";fi
+if test ${NAMERESTARTSARRAY[$count]} -gt 20 2>/dev/null; then restartslight="${redfg}";notes="high restarts";fi
+if test ${NAMERESTARTSARRAY[$count]} -eq 100 2>/dev/null;then notes='';fi
 readycheck=$(echo $mess | cut -f2 -d\: | tr \/ \:)
 readycheck1=$(echo $readycheck | cut -f1 -d\:)
 readycheck2=$(echo $readycheck | cut -f2 -d\:)
